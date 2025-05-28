@@ -9,8 +9,9 @@ import {
   Text,
   MD3LightTheme as DefaultTheme,
 } from "react-native-paper";
-import myColors from "./assets/colors.json";
-import myColorsDark from "./assets/colorsDark.json";
+import myColors from "../assets/colors.json";
+import myColorsDark from "../assets/colorsDark.json";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function App() {
   const [isSwitchOn, setIsSwitchOn] = useState(false); // variável para controle do darkMode
@@ -26,11 +27,23 @@ export default function App() {
   });
 
   // load darkMode from AsyncStorage
-  async function loadDarkMode() {}
+  async function loadDarkMode() {
+    if (isSwitchOn) {
+    }
+  }
 
   // darkMode switch event
   async function onToggleSwitch() {
     setIsSwitchOn(!isSwitchOn);
+
+    try {
+      await AsyncStorage.setItem("@darkMode", isSwitchOn);
+      console.log(`Dark Mode: ${AsyncStorage.getItem("@darkMode")}`);
+    } catch (ErrorDarkMode) {
+      console.log(
+        `Erro ao tentar salvar preferência de tema do aplicativo: ${ErrorDarkMode}`
+      );
+    }
   }
 
   // get location (bottao capturar localização)
