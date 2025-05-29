@@ -26,19 +26,44 @@ export default function App() {
     colors: myColors.colors,
   });
 
+  useEffect(() => {
+    async function load() {
+      loadDarkMode();
+    }
+
+    load();
+  }, []);
+
   // load darkMode from AsyncStorage
   async function loadDarkMode() {
-    if (isSwitchOn) {
+    const storageValue = await AsyncStorage.getItem("@darkMode");
+
+    if (storageValue == "true") {
+      setIsSwitchOn(true);
+      setTheme({ ...theme, colors: myColorsDark.colors });
+    } else {
+      setIsSwitchOn(false);
+      setTheme({ ...theme, colors: myColors.colors });
     }
+    console.log(`Dark Mode: ${storageValue}`);
   }
 
   // darkMode switch event
   async function onToggleSwitch() {
-    setIsSwitchOn(!isSwitchOn);
+    const newSwitchState = !isSwitchOn;
+    setIsSwitchOn(newSwitchState);
+
+    let isDarkMode;
+    if (!isSwitchOn) {
+      isDarkMode = "true";
+    } else {
+      isDarkMode = "false";
+    }
 
     try {
-      await AsyncStorage.setItem("@darkMode", isSwitchOn);
-      console.log(`Dark Mode: ${AsyncStorage.getItem("@darkMode")}`);
+      await AsyncStorage.setItem("@darkMode", isDarkMode);
+      const storageValue = await AsyncStorage.getItem("@darkMode");
+      console.log(`Dark Mode: ${storageValue}`);
     } catch (ErrorDarkMode) {
       console.log(
         `Erro ao tentar salvar preferência de tema do aplicativo: ${ErrorDarkMode}`
