@@ -12,11 +12,13 @@ import {
 import myColors from "../assets/colors.json";
 import myColorsDark from "../assets/colorsDark.json";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 
 export default function App() {
   const [isSwitchOn, setIsSwitchOn] = useState(false); // variável para controle do darkMode
   const [isLoading, setIsLoading] = useState(false); // variável para controle do loading do button
   const [locations, setLocations] = useState(null); // variável para armazenar as localizações
+  const [location, setLocation] = useState(null);
 
   // Carrega tema default da lib RN PAPER com customização das cores. Para customizar o tema, veja:
   // https://callstack.github.io/react-native-paper/docs/guides/theming/#creating-dynamic-theme-colors
@@ -32,6 +34,20 @@ export default function App() {
     }
 
     load();
+
+    async function getCurrentLocation() {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setErrorMsg("Permission to access location was denied");
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+      console.log("Current Location:", location);
+    }
+
+    getCurrentLocation();
   }, []);
 
   // load darkMode from AsyncStorage
