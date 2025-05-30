@@ -13,9 +13,9 @@ import myColors from "../assets/colors.json";
 import myColorsDark from "../assets/colorsDark.json";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import onpenDB from "../db";
+import openDB from "../db";
 
-const db = onpenDB();
+const db = openDB();
 
 export default function App() {
   const [isSwitchOn, setIsSwitchOn] = useState(false); // variável para controle do darkMode
@@ -29,14 +29,6 @@ export default function App() {
     myOwnProperty: true,
     colors: myColors.colors,
   });
-
-  useEffect(() => {
-    const locationRow = db.getAllSync("select * from locations", []);
-    console.log(
-      "Localizações carregadas do banco de dados:",
-      JSON.stringify(locationRow)
-    );
-  }, []);
 
   useEffect(() => {
     async function initializeApp() {
@@ -95,38 +87,40 @@ export default function App() {
   async function getLocation() {
     setIsLoading(true);
 
+    const result = await db.queryAsync("SELECT * FROM locations");
+
+    console.log("Localizações salvas no banco de dados:", result);
+
     try {
-      const hasPermission = await getAccessLocation(); // Verifica/solicita permissão novamente
+      const hasPermission = await getAccessLocation();
       if (!hasPermission) {
         setIsLoading(false);
-        return; // Sai da função se não tiver permissão
+        return;
       }
 
       let locationObject = await Location.getCurrentPositionAsync({});
 
-      // id único para a nova localização sendo int
       const newLocation = {
-        id: Math.floor(Math.random() * 1000000), // Gera um ID aleatório
         latitude: locationObject.coords.latitude,
         longitude: locationObject.coords.longitude,
-        timestamp: new Date().toLocaleString("pt-BR"), // Adiciona timestamp em formato BR
       };
 
-      // Salva a nova localização no banco de dados SQLite
-      await db.execSync(
-        "INSERT INTO locations (latitude, longitude, timestamp) VALUES (?, ?, ?)",
-        [
-          newLocation.id,
-          newLocation.latitude,
-          newLocation.longitude,
-          new Date().toISOString(), // Armazena o timestamp em formato ISO
-        ]
-      );
-      console.log("Localização salva no banco de dados:", newLocation);
+      console.log("Localização atual:", newLocation);
 
-      setLocations([newLocation, ...locations]);
+      db.withTransactionAsync(async () => {
+        console.log("Salvando nova localização no banco de dados...");
 
-      console.log("Localização capturada:", newLocation);
+        await db.execAsync(
+          `INSERT INTO locations (latitude, longitude) VALUES (${newLocation.latitude}, ${newLocation.longitude})`
+        );
+        await sleep(2000);
+
+        const result = await db.queryAsync("SELECT * FROM locations");
+
+        console.log("Localizações salvas no banco de dados:", result);
+      });
+
+      // setLocations([newLocation, ...locations]);
     } catch (error) {
       console.error("Erro ao obter localização atual:", error);
     } finally {
@@ -156,25 +150,18 @@ export default function App() {
     setIsLoading(true);
 
     // TODO: Substituir esta lógica fake pela leitura do seu banco de dados SQLite
+    // Certifique-se de que os objetos carregados do DB tenham 'id', 'latitude', 'longitude' e 'timestamp'
     const fetchedLocations = [];
-    try {
-      const rows = await db.getAll("SELECT * FROM locations", []);
-      rows.forEach((row) => {
-        fetchedLocations.push({
-          id: row.id,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          timestamp: new Date(row.timestamp).toLocaleString("pt-BR"), // Formata o timestamp
-        });
-      }, []);
-      console.log(
-        `Localizações carregadas do banco de dados: ${fetchedLocations}`
-      );
-    } catch (error) {
-      console.error("Erro ao carregar localizações do banco de dados:", error);
-    }
+    // Exemplo de como carregar e formatar dados do DB:
+    // const dbLocations = await fetchFromDatabase();
+    // fetchedLocations = dbLocations.map(item => ({
+    //   id: item.id,
+    //   latitude: item.lat, // Ajuste conforme o nome da coluna no seu DB
+    //   longitude: item.lon, // Ajuste conforme o nome da coluna no seu DB
+    //   timestamp: new Date(item.timestamp).toLocaleString('pt-BR'), // Formata o timestamp do DB
+    // }));
 
-    setLocations(fetchedLocations);
+    setLocations(fetchedLocations); // Salva a LISTA de localizações no estado 'locations'
     setIsLoading(false);
   }
 
