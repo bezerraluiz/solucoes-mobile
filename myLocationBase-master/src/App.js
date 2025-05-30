@@ -15,15 +15,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import openDB from "../db";
 
-const db = openDB();
-
 export default function App() {
-  const [isSwitchOn, setIsSwitchOn] = useState(false); // variável para controle do darkMode
-  const [isLoading, setIsLoading] = useState(false); // variável para controle do loading do button
-  const [locations, setLocations] = useState([]); // Variável para armazenar a LISTA de localizações capturadas
+  const [isSwitchOn, setIsSwitchOn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [locations, setLocations] = useState([]);
 
-  // Carrega tema default da lib RN PAPER com customização das cores. Para customizar o tema, veja:
-  // https://callstack.github.io/react-native-paper/docs/guides/theming/#creating-dynamic-theme-colors
   const [theme, setTheme] = useState({
     ...DefaultTheme,
     myOwnProperty: true,
@@ -32,15 +28,13 @@ export default function App() {
 
   useEffect(() => {
     async function initializeApp() {
-      await loadDarkMode(); // Carrega a preferência de tema
-      await getAccessLocation(); // Solicita permissão de localização
-      // Removido loadLocations() para começar com a lista vazia
+      await loadDarkMode();
+      await getAccessLocation();
     }
 
     initializeApp();
   }, []);
 
-  // Efetiva a alteração do tema dark/light quando a variável isSwitchOn é alterada
   useEffect(() => {
     if (isSwitchOn) {
       setTheme({
@@ -55,9 +49,8 @@ export default function App() {
         colors: myColors.colors,
       });
     }
-  }, [isSwitchOn]); // Dependência: executa quando isSwitchOn muda
+  }, [isSwitchOn]);
 
-  // load darkMode from AsyncStorage
   async function loadDarkMode() {
     try {
       const storageValue = await AsyncStorage.getItem("@darkMode");
@@ -66,30 +59,21 @@ export default function App() {
       } else {
         setIsSwitchOn(false);
       }
-      console.log(`Dark Mode loaded: ${storageValue}`);
-    } catch (error) {
-      console.error("Erro ao carregar preferência de tema:", error);
-    }
+    } catch (error) {}
   }
 
-  // Solicita permissão de localização
   async function getAccessLocation() {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
-      console.error("Permissão de acesso à localização negada");
-      // Você pode querer definir um estado para mostrar uma mensagem ao usuário
-      return false; // Retorna false se a permissão for negada
+      return false;
     }
-    return true; // Retorna true se a permissão for concedida
+    return true;
   }
 
-  // get location (bottao capturar localização)
   async function getLocation() {
     setIsLoading(true);
 
-    const result = await db.queryAsync("SELECT * FROM locations");
-
-    console.log("Localizações salvas no banco de dados:", result);
+    const db = openDB();
 
     try {
       const hasPermission = await getAccessLocation();
@@ -105,63 +89,37 @@ export default function App() {
         longitude: locationObject.coords.longitude,
       };
 
-      console.log("Localização atual:", newLocation);
-
       db.withTransactionAsync(async () => {
-        console.log("Salvando nova localização no banco de dados...");
-
         await db.execAsync(
-          `INSERT INTO locations (latitude, longitude) VALUES (${newLocation.latitude}, ${newLocation.longitude})`
+          "INSERT INTO locations (latitude, longitude) VALUES (?, ?)",
+          [newLocation.latitude, newLocation.longitude]
         );
         await sleep(2000);
 
         const result = await db.queryAsync("SELECT * FROM locations");
-
-        console.log("Localizações salvas no banco de dados:", result);
       });
-
-      // setLocations([newLocation, ...locations]);
-    } catch (error) {
-      console.error("Erro ao obter localização atual:", error);
-    } finally {
+    } catch (error) {} finally {
       setIsLoading(false);
     }
   }
 
-  // darkMode switch event
   async function onToggleSwitch() {
     const newSwitchState = !isSwitchOn;
-    setIsSwitchOn(newSwitchState); // Isso irá disparar o useEffect que muda o tema
+    setIsSwitchOn(newSwitchState);
 
     const storageValueToSave = newSwitchState ? "true" : "false";
 
     try {
       await AsyncStorage.setItem("@darkMode", storageValueToSave);
-      console.log(`Dark Mode saved: ${storageValueToSave}`);
-    } catch (error) {
-      console.error(
-        `Erro ao tentar salvar preferência de tema do aplicativo: ${error}`
-      );
-    }
+    } catch (error) {}
   }
 
-  // load locations from db sqlite - faz a leitura das localizações salvas no banco de dados
   async function loadLocations() {
     setIsLoading(true);
 
-    // TODO: Substituir esta lógica fake pela leitura do seu banco de dados SQLite
-    // Certifique-se de que os objetos carregados do DB tenham 'id', 'latitude', 'longitude' e 'timestamp'
     const fetchedLocations = [];
-    // Exemplo de como carregar e formatar dados do DB:
-    // const dbLocations = await fetchFromDatabase();
-    // fetchedLocations = dbLocations.map(item => ({
-    //   id: item.id,
-    //   latitude: item.lat, // Ajuste conforme o nome da coluna no seu DB
-    //   longitude: item.lon, // Ajuste conforme o nome da coluna no seu DB
-    //   timestamp: new Date(item.timestamp).toLocaleString('pt-BR'), // Formata o timestamp do DB
-    // }));
 
-    setLocations(fetchedLocations); // Salva a LISTA de localizações no estado 'locations'
+    setLocations(fetchedLocations);
     setIsLoading(false);
   }
 
@@ -170,7 +128,6 @@ export default function App() {
       <Appbar.Header>
         <Appbar.Content title="My Location BASE" />
       </Appbar.Header>
-      {/* Apply background color directly to the outer View to ensure it fills the screen */}
       <View
         style={[
           styles.mainContainer,
@@ -186,22 +143,17 @@ export default function App() {
           icon="map"
           mode="contained"
           loading={isLoading}
-          onPress={getLocation} // Chama a função para capturar a localização atual
+          onPress={getLocation}
         >
           Capturar localização
         </Button>
 
-        {/* Removido o List.Item separado para a localização atual */}
-
-        {/* List of saved locations */}
         <FlatList
           style={styles.containerList}
-          data={locations} // Usa a lista de localizações capturadas
-          keyExtractor={(item) => item.id.toString()} // Chave única para cada item
+          data={locations}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={({ item, index }) => {
-            // Verifica se é o último item da lista (o mais recente se adicionado ao final)
-            // Se adicionado ao início, verifica se é o primeiro item (index === 0)
-            const isLastLocation = index === 0; // Se adicionando ao início da lista
+            const isLastLocation = index === 0;
 
             return (
               <List.Item
@@ -215,7 +167,6 @@ export default function App() {
             );
           }}
           ListEmptyComponent={() => (
-            // Componente exibido quando a lista está vazia
             <Text style={{ textAlign: "center", marginTop: 20 }}>
               Nenhuma localização capturada ainda.
             </Text>
@@ -228,7 +179,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   mainContainer: {
-    flex: 1, // Garante que o container principal ocupe todo o espaço disponível
+    flex: 1,
   },
   containerDarkMode: {
     margin: 10,
@@ -241,12 +192,12 @@ const styles = StyleSheet.create({
   },
   containerList: {
     margin: 10,
-    flex: 1, // Permite que a FlatList ocupe o espaço restante
+    flex: 1,
   },
   currentLocationItem: {
-    marginHorizontal: 10, // Margem nas laterais
-    marginBottom: 10, // Margem abaixo
-    backgroundColor: "rgba(0, 0, 0, 0.05)", // Fundo sutil
+    marginHorizontal: 10,
+    marginBottom: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
     borderRadius: 5,
   },
 });
