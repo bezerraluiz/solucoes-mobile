@@ -5,7 +5,8 @@ const SQL_CREATE_ENTRIES = `
   CREATE TABLE locations (
     id INTEGER PRIMARY KEY autoincrement,
     latitude REAL NOT NULL,
-    longitude REAL NOT NULL
+    longitude REAL NOT NULL,
+    timestamp TEXT NOT NULL
   )
 `;
 
@@ -14,9 +15,7 @@ export default function openDB() {
   if (!_db) {
     _db = SQLite.openDatabaseSync(DATABASE_NAME);
 
-    // If table exists, drop it
-    _db.execSync(`DROP TABLE IF EXISTS locations`);
-
+    _db.execSync("DROP TABLE IF EXISTS locations");
     _db.withTransactionSync(() => {
       _db.execSync(SQL_CREATE_ENTRIES);
     });
