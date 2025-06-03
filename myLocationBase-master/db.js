@@ -15,7 +15,6 @@ export default function openDB() {
   if (!_db) {
     _db = SQLite.openDatabaseSync(DATABASE_NAME);
 
-    _db.execSync("DROP TABLE IF EXISTS locations");
     _db.withTransactionSync(() => {
       _db.execSync(SQL_CREATE_ENTRIES);
     });
